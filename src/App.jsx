@@ -19,7 +19,13 @@ const TEAM_COLORS = {
   black: { fill: '#1e293b', stroke: '#0f172a', name: 'Negro' },
   green: { fill: '#22c55e', stroke: '#16a34a', name: 'Verde' },
   orange: { fill: '#f97316', stroke: '#ea580c', name: 'Naranja' },
-  purple: { fill: '#a855f7', stroke: '#9333ea', name: 'Morado' }
+  purple: { fill: '#a855f7', stroke: '#9333ea', name: 'Morado' },
+  // Rayados
+  atletico: { fill: '#ef4444', fill2: '#ffffff', stroke: '#dc2626', name: 'Atlético', striped: true },
+  barcelona: { fill: '#a855f7', fill2: '#dc2626', stroke: '#7c3aed', name: 'Barcelona', striped: true },
+  milan: { fill: '#ef4444', fill2: '#1e293b', stroke: '#dc2626', name: 'Milan', striped: true },
+  juventus: { fill: '#ffffff', fill2: '#1e293b', stroke: '#cbd5e1', name: 'Juventus', striped: true },
+  inter: { fill: '#3b82f6', fill2: '#1e293b', stroke: '#2563eb', name: 'Inter', striped: true }
 };
 
 // Tamaños de jugadores
@@ -188,12 +194,15 @@ const LINE_COLORS = [
 const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
   const teamColor = TEAM_COLORS[player.color] || TEAM_COLORS.blue;
   const vestColor = TEAM_COLORS[player.vestColor] || TEAM_COLORS.yellow;
-  const textColor = ['yellow', 'white'].includes(player.color) ? '#1e293b' : '#ffffff';
+  const textColor = ['yellow', 'white', 'atletico', 'juventus'].includes(player.color) ? '#1e293b' : '#ffffff';
   
   // Usar escala numérica (default 1.0) - valores base reducidos: radius 14, fontSize 11
   const scale = player.scale ?? 1.0;
   const radius = 14 * scale;
   const fontSize = 11 * scale;
+  
+  // ID único para el patrón rayado
+  const patternId = `stripes-${player.id}`;
 
   return (
     <g
@@ -202,6 +211,16 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
       onMouseDown={(e) => onSelect(player.id, e)}
       onDoubleClick={() => onEditNumber(player.id)}
     >
+      {/* Patrón rayado si aplica */}
+      {teamColor.striped && (
+        <defs>
+          <pattern id={patternId} patternUnits="userSpaceOnUse" width="6" height="10">
+            <rect width="3" height="10" fill={teamColor.fill} />
+            <rect x="3" width="3" height="10" fill={teamColor.fill2} />
+          </pattern>
+        </defs>
+      )}
+      
       {player.hasVest && (
         <circle 
           r={radius + 4} 
@@ -213,7 +232,7 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
       )}
       <circle 
         r={radius} 
-        fill={teamColor.fill} 
+        fill={teamColor.striped ? `url(#${patternId})` : teamColor.fill} 
         stroke={isSelected ? '#22c55e' : teamColor.stroke} 
         strokeWidth={isSelected ? 3 : 2} 
       />
@@ -521,6 +540,7 @@ export default function TacticalBoard() {
   const [fieldType, setFieldType] = useState('full');
   const [activeTool, setActiveTool] = useState('select');
   const [selectedColor, setSelectedColor] = useState('blue');
+  const [rivalColor, setRivalColor] = useState('red');
   const [selectedSize, setSelectedSize] = useState('medium');
   const [showNumbers, setShowNumbers] = useState(true);
   const [hasVest, setHasVest] = useState(false);
@@ -1279,6 +1299,31 @@ export default function TacticalBoard() {
     setProjectName(formationKey);
   };
 
+  // Añadir equipo rival (espejado)
+  const addRivalTeam = (formationKey) => {
+    const formation = FORMATIONS[formationKey];
+    if (!formation) return;
+
+    const initialScale = selectedSize === 'small' ? 0.55 : selectedSize === 'large' ? 1.4 : 1.0;
+    const timestamp = Date.now() + 1000; // Offset para IDs únicos
+
+    const rivalPlayers = formation.positions.map((pos, index) => ({
+      id: timestamp + index,
+      x: (1 - pos.x) * canvasWidth, // Espejado horizontal
+      y: pos.y * canvasHeight,
+      color: rivalColor,
+      scale: initialScale,
+      number: index + 1,
+      showNumber: showNumbers,
+      hasVest: false,
+      vestColor: 'yellow'
+    }));
+
+    setPlayers([...players, ...rivalPlayers]);
+    setPlayerCounts(prev => ({ ...prev, [rivalColor]: 11 }));
+    setSelectedId(null);
+  };
+
   const handleExport = () => {
     setSelectedId(null); // Quitar selección antes de exportar
     
@@ -1492,17 +1537,72 @@ export default function TacticalBoard() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Coloca 11 jugadores automáticamente</p>
                 </div>
+
+                {/* Equipo Rival */}
+                <div className="border-t border-gray-600 pt-3">
+                  <label className="text-xs text-gray-500 uppercase">Añadir equipo rival</label>
+                  <div className="grid grid-cols-4 gap-1.5 mt-1">
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setRivalColor(key)}
+                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        style={{ backgroundColor: val.fill }}
+                        title={val.name}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 mt-1">
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => val.striped).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setRivalColor(key)}
+                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 overflow-hidden ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        title={val.name}
+                        style={{
+                          background: `repeating-linear-gradient(90deg, ${val.fill} 0px, ${val.fill} 4px, ${val.fill2} 4px, ${val.fill2} 8px)`
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {Object.keys(FORMATIONS).slice(0, 4).map(key => (
+                      <button
+                        key={key}
+                        onClick={() => addRivalTeam(key)}
+                        className="py-1.5 px-2 rounded-md text-xs font-semibold bg-yellow-600 hover:bg-yellow-500 text-black transition-colors"
+                      >
+                        + {key}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Añade rival espejado</p>
+                </div>
                 
                 <div>
                   <label className="text-xs text-gray-500 uppercase">Color equipo</label>
                   <div className="grid grid-cols-4 gap-1.5 mt-1">
-                    {Object.entries(TEAM_COLORS).map(([key, val]) => (
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).map(([key, val]) => (
                       <button
                         key={key}
                         onClick={() => setSelectedColor(key)}
                         className={`w-full aspect-square rounded-md transition-transform hover:scale-105 ${selectedColor === key ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-800' : ''}`}
                         style={{ backgroundColor: val.fill }}
                         title={val.name}
+                      />
+                    ))}
+                  </div>
+                  <label className="text-xs text-gray-500 uppercase mt-2 block">Rayados</label>
+                  <div className="grid grid-cols-5 gap-1.5 mt-1">
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => val.striped).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedColor(key)}
+                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 overflow-hidden ${selectedColor === key ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-800' : ''}`}
+                        title={val.name}
+                        style={{
+                          background: `repeating-linear-gradient(90deg, ${val.fill} 0px, ${val.fill} 4px, ${val.fill2} 4px, ${val.fill2} 8px)`
+                        }}
                       />
                     ))}
                   </div>
