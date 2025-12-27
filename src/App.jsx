@@ -832,7 +832,7 @@ export default function TacticalBoard() {
             {[
               { key: 'full', label: 'Completo', icon: <Maximize size={14} /> },
               { key: 'half', label: 'Medio', icon: <Square size={14} /> },
-              { key: 'blank', label: 'Libre', icon: <Grid3X3 size={14} /> }
+              { key: 'blank', label: 'Libre', icon: <Square size={14} /> }
             ].map(f => (
               <button
                 key={f.key}
