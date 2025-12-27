@@ -295,6 +295,7 @@ const SoccerField = ({ type, width, height }) => {
       width={width}
       height={height}
       preserveAspectRatio="xMidYMid slice"
+      data-background="true"
     />
   );
 };
@@ -359,7 +360,12 @@ export default function TacticalBoard() {
   };
 
   const handleCanvasClick = (e) => {
-    if (e.target !== svgRef.current && e.target.tagName !== 'rect' && e.target.tagName !== 'image') return;
+    // Solo procesar clics directamente en el SVG o en el fondo (image de campo)
+    const isBackground = e.target === svgRef.current || 
+                         (e.target.tagName === 'image' && e.target.getAttribute('data-background') === 'true') ||
+                         (e.target.tagName === 'rect' && e.target.getAttribute('data-background') === 'true');
+    
+    if (!isBackground) return;
     if (isDrawing || isResizing) return;
     
     const pos = getMousePos(e);
