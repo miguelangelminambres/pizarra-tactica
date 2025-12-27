@@ -1780,6 +1780,16 @@ export default function TacticalBoard() {
 
         {/* Canvas */}
         <main className="flex-1 bg-gray-900 flex items-center justify-center p-4 overflow-auto">
+          {/* Logo izquierdo */}
+          <div className="hidden lg:flex flex-col items-center justify-center px-4">
+            <img 
+              src="https://toplidercoach.com/wp-content/uploads/2024/02/cropped-Black-White-Minimalist-Letter-MG-Logo.png" 
+              alt="TopLiderCoach" 
+              className="w-16 h-16 opacity-60"
+            />
+            <span className="text-gray-500 text-xs mt-2 font-medium">TopLiderCoach</span>
+          </div>
+          
           <svg
             ref={svgRef}
             width={canvasWidth}
@@ -1870,6 +1880,16 @@ export default function TacticalBoard() {
               <TextLabel key={item.id} item={item} isSelected={selectedId === item.id} onSelect={handleSelect} onEdit={handleEditText} />
             ))}
           </svg>
+          
+          {/* Logo derecho */}
+          <div className="hidden lg:flex flex-col items-center justify-center px-4">
+            <img 
+              src="https://toplidercoach.com/wp-content/uploads/2024/02/cropped-Black-White-Minimalist-Letter-MG-Logo.png" 
+              alt="TopLiderCoach" 
+              className="w-16 h-16 opacity-60"
+            />
+            <span className="text-gray-500 text-xs mt-2 font-medium">TopLiderCoach</span>
+          </div>
         </main>
       </div>
 
