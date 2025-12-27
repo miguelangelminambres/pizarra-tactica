@@ -1513,51 +1513,67 @@ export default function TacticalBoard() {
             </button>
             {expandedSection === 'players' && (
               <div className="p-3 pt-0 space-y-3">
-                <button
-                  onClick={() => setActiveTool('player')}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${activeTool === 'player' ? 'bg-green-500 text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                  <Circle size={16} />
-                  Añadir jugador
-                </button>
-
-                {/* Formaciones automáticas */}
-                <div>
-                  <label className="text-xs text-gray-500 uppercase">Formación automática</label>
-                  <div className="grid grid-cols-2 gap-1.5 mt-1">
+                
+                {/* MI EQUIPO */}
+                <div className="bg-blue-900/30 rounded-lg p-2.5 space-y-2">
+                  <label className="text-xs text-blue-400 uppercase font-semibold">⚽ Mi equipo</label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedColor(key)}
+                        className={`w-full aspect-square rounded transition-transform hover:scale-105 ${selectedColor === key ? 'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        style={{ backgroundColor: val.fill }}
+                        title={val.name}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {Object.entries(TEAM_COLORS).filter(([_, val]) => val.striped).map(([key, val]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedColor(key)}
+                        className={`w-full aspect-square rounded transition-transform hover:scale-105 overflow-hidden ${selectedColor === key ? 'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        title={val.name}
+                        style={{
+                          background: `repeating-linear-gradient(90deg, ${val.fill} 0px, ${val.fill} 4px, ${val.fill2} 4px, ${val.fill2} 8px)`
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
                     {Object.keys(FORMATIONS).map(key => (
                       <button
                         key={key}
                         onClick={() => applyFormation(key)}
-                        className="py-2 px-2 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                        className="py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors"
                       >
                         {key}
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Coloca 11 jugadores automáticamente</p>
                 </div>
 
-                {/* Equipo Rival */}
-                <div className="border-t border-gray-600 pt-3">
-                  <label className="text-xs text-gray-500 uppercase">Añadir equipo rival</label>
-                  <div className="grid grid-cols-4 gap-1.5 mt-1">
+                {/* EQUIPO RIVAL */}
+                <div className="bg-yellow-900/30 rounded-lg p-2.5 space-y-2">
+                  <label className="text-xs text-yellow-400 uppercase font-semibold">⚔️ Equipo rival</label>
+                  <div className="grid grid-cols-4 gap-1">
                     {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).map(([key, val]) => (
                       <button
                         key={key}
                         onClick={() => setRivalColor(key)}
-                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        className={`w-full aspect-square rounded transition-transform hover:scale-105 ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
                         style={{ backgroundColor: val.fill }}
                         title={val.name}
                       />
                     ))}
                   </div>
-                  <div className="grid grid-cols-5 gap-1.5 mt-1">
+                  <div className="grid grid-cols-5 gap-1">
                     {Object.entries(TEAM_COLORS).filter(([_, val]) => val.striped).map(([key, val]) => (
                       <button
                         key={key}
                         onClick={() => setRivalColor(key)}
-                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 overflow-hidden ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
+                        className={`w-full aspect-square rounded transition-transform hover:scale-105 overflow-hidden ${rivalColor === key ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-800' : ''}`}
                         title={val.name}
                         style={{
                           background: `repeating-linear-gradient(90deg, ${val.fill} 0px, ${val.fill} 4px, ${val.fill2} 4px, ${val.fill2} 8px)`
@@ -1565,86 +1581,69 @@ export default function TacticalBoard() {
                       />
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 mt-2">
-                    {Object.keys(FORMATIONS).slice(0, 4).map(key => (
+                  <div className="grid grid-cols-3 gap-1">
+                    {Object.keys(FORMATIONS).map(key => (
                       <button
                         key={key}
                         onClick={() => addRivalTeam(key)}
-                        className="py-1.5 px-2 rounded-md text-xs font-semibold bg-yellow-600 hover:bg-yellow-500 text-black transition-colors"
+                        className="py-1.5 rounded text-xs font-semibold bg-yellow-600 hover:bg-yellow-500 text-black transition-colors"
                       >
-                        + {key}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Añade rival espejado</p>
-                </div>
-                
-                <div>
-                  <label className="text-xs text-gray-500 uppercase">Color equipo</label>
-                  <div className="grid grid-cols-4 gap-1.5 mt-1">
-                    {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).map(([key, val]) => (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedColor(key)}
-                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 ${selectedColor === key ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-800' : ''}`}
-                        style={{ backgroundColor: val.fill }}
-                        title={val.name}
-                      />
-                    ))}
-                  </div>
-                  <label className="text-xs text-gray-500 uppercase mt-2 block">Rayados</label>
-                  <div className="grid grid-cols-5 gap-1.5 mt-1">
-                    {Object.entries(TEAM_COLORS).filter(([_, val]) => val.striped).map(([key, val]) => (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedColor(key)}
-                        className={`w-full aspect-square rounded-md transition-transform hover:scale-105 overflow-hidden ${selectedColor === key ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-800' : ''}`}
-                        title={val.name}
-                        style={{
-                          background: `repeating-linear-gradient(90deg, ${val.fill} 0px, ${val.fill} 4px, ${val.fill2} 4px, ${val.fill2} 8px)`
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="text-xs text-gray-500 uppercase">Tamaño</label>
-                  <div className="grid grid-cols-3 gap-1.5 mt-1">
-                    {Object.entries(PLAYER_SIZES).map(([key, val]) => (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedSize(key)}
-                        className={`py-2 rounded-md text-xs font-semibold transition-colors ${selectedSize === key ? 'bg-green-500 text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
-                      >
-                        {val.label}
+                        {key}
                       </button>
                     ))}
                   </div>
                 </div>
-                
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={showNumbers} onChange={(e) => setShowNumbers(e.target.checked)} className="accent-green-500 w-4 h-4" />
-                  Mostrar números
-                </label>
-                
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={hasVest} onChange={(e) => setHasVest(e.target.checked)} className="accent-green-500 w-4 h-4" />
-                  Con peto
-                </label>
-                
-                {hasVest && (
-                  <div className="grid grid-cols-6 gap-1">
-                    {Object.entries(TEAM_COLORS).slice(0, 6).map(([key, val]) => (
-                      <button
-                        key={key}
-                        onClick={() => setVestColor(key)}
-                        className={`w-full aspect-square rounded ${vestColor === key ? 'ring-2 ring-white' : ''}`}
-                        style={{ backgroundColor: val.fill }}
-                      />
-                    ))}
+
+                {/* OPCIONES */}
+                <div className="border-t border-gray-600 pt-3 space-y-2">
+                  <label className="text-xs text-gray-500 uppercase">Opciones</label>
+                  
+                  <button
+                    onClick={() => setActiveTool('player')}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${activeTool === 'player' ? 'bg-green-500 text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
+                  >
+                    <Circle size={16} />
+                    Añadir jugador individual
+                  </button>
+                  
+                  <div>
+                    <label className="text-xs text-gray-500">Tamaño</label>
+                    <div className="grid grid-cols-3 gap-1.5 mt-1">
+                      {Object.entries(PLAYER_SIZES).map(([key, val]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedSize(key)}
+                          className={`py-1.5 rounded-md text-xs font-semibold transition-colors ${selectedSize === key ? 'bg-green-500 text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        >
+                          {val.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
+                  
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={showNumbers} onChange={(e) => setShowNumbers(e.target.checked)} className="accent-green-500 w-4 h-4" />
+                    Mostrar números
+                  </label>
+                  
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={hasVest} onChange={(e) => setHasVest(e.target.checked)} className="accent-green-500 w-4 h-4" />
+                    Con peto
+                  </label>
+                  
+                  {hasVest && (
+                    <div className="grid grid-cols-6 gap-1">
+                      {Object.entries(TEAM_COLORS).filter(([_, val]) => !val.striped).slice(0, 6).map(([key, val]) => (
+                        <button
+                          key={key}
+                          onClick={() => setVestColor(key)}
+                          className={`w-full aspect-square rounded ${vestColor === key ? 'ring-2 ring-white' : ''}`}
+                          style={{ backgroundColor: val.fill }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
