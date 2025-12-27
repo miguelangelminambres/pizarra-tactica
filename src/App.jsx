@@ -5,7 +5,9 @@ import {
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
   Save, FolderOpen, Plus, X, Loader2, RotateCw
 } from 'lucide-react';
-import { supabase } from './supabase';
+
+// Clave para localStorage
+const STORAGE_KEY = 'tacticalBoards';
 
 // Colores de equipos
 const TEAM_COLORS = {
@@ -746,99 +748,108 @@ export default function TacticalBoard() {
 
   // === FUNCIONES DE SUPABASE ===
   
-  // Cargar lista de pizarras guardadas
-  const loadBoardsList = async () => {
+  // Cargar lista de pizarras guardadas desde localStorage
+  const loadBoardsList = () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('tactical_boards')
-      .select('id, name, updated_at')
-      .order('updated_at', { ascending: false });
-    
-    if (!error) {
-      setSavedBoards(data || []);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const boards = stored ? JSON.parse(stored) : [];
+      // Ordenar por fecha de actualización (más reciente primero)
+      boards.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+      setSavedBoards(boards);
+    } catch (e) {
+      console.error('Error loading boards:', e);
+      setSavedBoards([]);
     }
     setIsLoading(false);
   };
 
-  // Guardar pizarra actual
-  const saveBoard = async (asNew = false) => {
+  // Guardar pizarra actual en localStorage
+  const saveBoard = (asNew = false) => {
     setIsSaving(true);
     
-    const boardData = {
-      name: projectName,
-      field_type: fieldType,
-      players: players,
-      equipment: equipment,
-      lines: lines,
-      shapes: shapes,
-      texts: texts,
-      updated_at: new Date().toISOString()
-    };
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let boards = stored ? JSON.parse(stored) : [];
+      
+      const boardData = {
+        id: (currentBoardId && !asNew) ? currentBoardId : Date.now().toString(),
+        name: projectName,
+        field_type: fieldType,
+        players: players,
+        equipment: equipment,
+        lines: lines,
+        shapes: shapes,
+        texts: texts,
+        updated_at: new Date().toISOString()
+      };
 
-    let result;
-    
-    if (currentBoardId && !asNew) {
-      // Actualizar existente
-      result = await supabase
-        .from('tactical_boards')
-        .update(boardData)
-        .eq('id', currentBoardId)
-        .select();
-    } else {
-      // Crear nueva
-      result = await supabase
-        .from('tactical_boards')
-        .insert(boardData)
-        .select();
-    }
+      if (currentBoardId && !asNew) {
+        // Actualizar existente
+        const index = boards.findIndex(b => b.id === currentBoardId);
+        if (index >= 0) {
+          boards[index] = boardData;
+        } else {
+          boards.push(boardData);
+        }
+      } else {
+        // Crear nueva
+        boards.push(boardData);
+      }
 
-    if (!result.error && result.data?.[0]) {
-      setCurrentBoardId(result.data[0].id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(boards));
+      setCurrentBoardId(boardData.id);
       setShowSaveModal(false);
+    } catch (e) {
+      console.error('Error saving board:', e);
     }
     
     setIsSaving(false);
-    return !result.error;
+    return true;
   };
 
-  // Cargar una pizarra
-  const loadBoard = async (boardId) => {
+  // Cargar una pizarra desde localStorage
+  const loadBoard = (boardId) => {
     setIsLoading(true);
     
-    const { data, error } = await supabase
-      .from('tactical_boards')
-      .select('*')
-      .eq('id', boardId)
-      .single();
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const boards = stored ? JSON.parse(stored) : [];
+      const data = boards.find(b => b.id === boardId);
 
-    if (!error && data) {
-      setCurrentBoardId(data.id);
-      setProjectName(data.name);
-      setFieldType(data.field_type || 'full');
-      setPlayers(data.players || []);
-      setEquipment(data.equipment || []);
-      setLines(data.lines || []);
-      setShapes(data.shapes || []);
-      setTexts(data.texts || []);
-      setSelectedId(null);
-      setShowLoadModal(false);
+      if (data) {
+        setCurrentBoardId(data.id);
+        setProjectName(data.name);
+        setFieldType(data.field_type || 'full');
+        setPlayers(data.players || []);
+        setEquipment(data.equipment || []);
+        setLines(data.lines || []);
+        setShapes(data.shapes || []);
+        setTexts(data.texts || []);
+        setSelectedId(null);
+        setShowLoadModal(false);
+      }
+    } catch (e) {
+      console.error('Error loading board:', e);
     }
     
     setIsLoading(false);
   };
 
-  // Eliminar una pizarra
-  const deleteBoard = async (boardId) => {
-    const { error } = await supabase
-      .from('tactical_boards')
-      .delete()
-      .eq('id', boardId);
-
-    if (!error) {
-      setSavedBoards(savedBoards.filter(b => b.id !== boardId));
+  // Eliminar una pizarra de localStorage
+  const deleteBoard = (boardId) => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let boards = stored ? JSON.parse(stored) : [];
+      boards = boards.filter(b => b.id !== boardId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(boards));
+      
+      setSavedBoards(boards);
       if (currentBoardId === boardId) {
         setCurrentBoardId(null);
       }
+    } catch (e) {
+      console.error('Error deleting board:', e);
     }
   };
 
