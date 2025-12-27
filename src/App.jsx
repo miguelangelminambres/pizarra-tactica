@@ -190,10 +190,10 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
   const vestColor = TEAM_COLORS[player.vestColor] || TEAM_COLORS.yellow;
   const textColor = ['yellow', 'white'].includes(player.color) ? '#1e293b' : '#ffffff';
   
-  // Usar escala numérica (default 1.0) - valores base: radius 18, fontSize 14
+  // Usar escala numérica (default 1.0) - valores base reducidos: radius 14, fontSize 11
   const scale = player.scale ?? 1.0;
-  const radius = 18 * scale;
-  const fontSize = 14 * scale;
+  const radius = 14 * scale;
+  const fontSize = 11 * scale;
 
   return (
     <g
@@ -704,7 +704,7 @@ export default function TacticalBoard() {
       const counts = { ...playerCounts };
       counts[selectedColor] = (counts[selectedColor] || 0) + 1;
       // Calcular escala inicial basada en selectedSize
-      const initialScale = selectedSize === 'small' ? 0.7 : selectedSize === 'large' ? 1.3 : 1.0;
+      const initialScale = selectedSize === 'small' ? 0.75 : selectedSize === 'large' ? 1.4 : 1.0;
       const newPlayer = {
         id: Date.now(),
         x: pos.x,
