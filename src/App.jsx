@@ -626,6 +626,27 @@ export default function TacticalBoard() {
     setSelectedId(null);
   };
 
+  // Cambiar tamaño del equipamiento seleccionado
+  const handleChangeEquipmentSize = (direction) => {
+    if (!selectedId) return;
+    const equip = equipment.find(eq => eq.id === selectedId);
+    if (!equip) return;
+    
+    const sizes = ['small', 'medium', 'large'];
+    const currentIndex = sizes.indexOf(equip.size || 'medium');
+    let newIndex;
+    
+    if (direction === 'increase') {
+      newIndex = Math.min(currentIndex + 1, sizes.length - 1);
+    } else {
+      newIndex = Math.max(currentIndex - 1, 0);
+    }
+    
+    setEquipment(equipment.map(eq => 
+      eq.id === selectedId ? { ...eq, size: sizes[newIndex] } : eq
+    ));
+  };
+
   const handleClearAll = () => {
     setShowClearConfirm(true);
   };
@@ -1130,6 +1151,27 @@ export default function TacticalBoard() {
                 <Type size={16} />
                 Editar número
               </button>
+            )}
+            {/* Botones tamaño - solo si hay equipamiento seleccionado */}
+            {selectedId && equipment.find(eq => eq.id === selectedId) && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleChangeEquipmentSize('decrease')}
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                  title="Reducir tamaño"
+                >
+                  <Minus size={16} />
+                  Menor
+                </button>
+                <button
+                  onClick={() => handleChangeEquipmentSize('increase')}
+                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                  title="Aumentar tamaño"
+                >
+                  <Plus size={16} />
+                  Mayor
+                </button>
+              </div>
             )}
             <button
               onClick={handleDelete}
