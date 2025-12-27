@@ -3,7 +3,7 @@ import {
   Users, Circle, Triangle, Minus, Square, Type, MousePointer, Trash2, 
   ArrowRight, MoveRight, Download, Maximize,
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
-  Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy
+  Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy, Pencil, Spline
 } from 'lucide-react';
 
 // Clave para localStorage
@@ -218,6 +218,73 @@ const DrawingLine = ({ line, isSelected, onSelect }) => {
   );
 };
 
+// Componente Lápiz libre (Freehand)
+const FreehandLine = ({ line, isSelected, onSelect }) => {
+  if (!line.points || line.points.length < 2) return null;
+  
+  // Crear path desde los puntos
+  const pathData = line.points.reduce((acc, point, i) => {
+    return acc + (i === 0 ? `M ${point.x} ${point.y}` : ` L ${point.x} ${point.y}`);
+  }, '');
+
+  return (
+    <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
+      <path
+        d={pathData}
+        stroke={line.color}
+        strokeWidth={isSelected ? 4 : 3}
+        strokeDasharray={line.dashed ? '10 5' : 'none'}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  );
+};
+
+// Componente Flecha curva
+const CurvedArrow = ({ line, isSelected, onSelect }) => {
+  const { x1, y1, x2, y2, cx, cy } = line;
+  const controlX = cx ?? (x1 + x2) / 2;
+  const controlY = cy ?? (y1 + y2) / 2 - 50;
+  
+  // Calcular ángulo para la punta de flecha (tangente al final de la curva)
+  // Para curva cuadrática, la tangente al final es desde el punto de control hasta el final
+  const dx = x2 - controlX;
+  const dy = y2 - controlY;
+  const angle = Math.atan2(dy, dx);
+  const headLen = 12;
+
+  return (
+    <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
+      <path
+        d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
+        stroke={line.color}
+        strokeWidth={isSelected ? 4 : 3}
+        strokeDasharray={line.dashed ? '10 5' : 'none'}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <polygon
+        points={`${x2},${y2} ${x2 - headLen * Math.cos(angle - 0.4)},${y2 - headLen * Math.sin(angle - 0.4)} ${x2 - headLen * Math.cos(angle + 0.4)},${y2 - headLen * Math.sin(angle + 0.4)}`}
+        fill={line.color}
+      />
+      {/* Punto de control visible cuando está seleccionado */}
+      {isSelected && (
+        <circle
+          cx={controlX}
+          cy={controlY}
+          r="6"
+          fill="#22c55e"
+          stroke="white"
+          strokeWidth="2"
+          style={{ cursor: 'move' }}
+        />
+      )}
+    </g>
+  );
+};
+
 // Componente Rectángulo editable
 const EditableRect = ({ shape, isSelected, onSelect, onResize, activeTool }) => {
   const handleMouseDown = (e) => {
@@ -356,6 +423,7 @@ export default function TacticalBoard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState(null);
   const [tempShape, setTempShape] = useState(null);
+  const [freehandPoints, setFreehandPoints] = useState([]);
   
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState(null);
@@ -439,7 +507,7 @@ export default function TacticalBoard() {
     
     const pos = getMousePos(e);
     
-    if (['arrow', 'line', 'rectangle', 'ellipse'].includes(activeTool)) {
+    if (['arrow', 'line', 'rectangle', 'ellipse', 'curvedArrow'].includes(activeTool)) {
       setIsDrawing(true);
       setDrawStart(pos);
       
@@ -447,9 +515,14 @@ export default function TacticalBoard() {
         setTempShape({ type: 'rect', x: pos.x, y: pos.y, width: 0, height: 0 });
       } else if (activeTool === 'ellipse') {
         setTempShape({ type: 'ellipse', x: pos.x, y: pos.y, rx: 0, ry: 0 });
+      } else if (activeTool === 'curvedArrow') {
+        setTempShape({ type: 'curvedArrow', x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
       } else {
         setTempShape({ type: 'line', x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
       }
+    } else if (activeTool === 'pencil') {
+      setIsDrawing(true);
+      setFreehandPoints([pos]);
     }
   };
 
@@ -523,9 +596,32 @@ export default function TacticalBoard() {
           rx,
           ry
         });
+      } else if (activeTool === 'curvedArrow') {
+        // Calcular punto de control automático (perpendicular al centro)
+        const midX = (drawStart.x + pos.x) / 2;
+        const midY = (drawStart.y + pos.y) / 2;
+        const dx = pos.x - drawStart.x;
+        const dy = pos.y - drawStart.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        // Curva hacia arriba/izquierda proporcional a la distancia
+        const curveOffset = dist * 0.3;
+        const cx = midX - (dy / dist) * curveOffset;
+        const cy = midY + (dx / dist) * curveOffset;
+        setTempShape({ 
+          type: 'curvedArrow', 
+          x1: drawStart.x, y1: drawStart.y, 
+          x2: pos.x, y2: pos.y,
+          cx: isNaN(cx) ? midX : cx,
+          cy: isNaN(cy) ? midY - 50 : cy
+        });
       } else {
         setTempShape({ type: 'line', x1: drawStart.x, y1: drawStart.y, x2: pos.x, y2: pos.y });
       }
+    }
+
+    // Dibujo libre (lápiz)
+    if (isDrawing && activeTool === 'pencil') {
+      setFreehandPoints(prev => [...prev, pos]);
     }
 
     // Arrastrar elementos
@@ -563,10 +659,29 @@ export default function TacticalBoard() {
         if (dist > 20) {
           const newLine = {
             id: Date.now(),
+            type: 'line',
             x1: drawStart.x, y1: drawStart.y,
             x2: pos.x, y2: pos.y,
             color: lineColor,
             hasArrow: activeTool === 'arrow',
+            dashed: lineDashed
+          };
+          setLines([...lines, newLine]);
+        }
+      } else if (activeTool === 'curvedArrow' && tempShape) {
+        const dx = pos.x - drawStart.x;
+        const dy = pos.y - drawStart.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist > 20) {
+          const newLine = {
+            id: Date.now(),
+            type: 'curvedArrow',
+            x1: drawStart.x, y1: drawStart.y,
+            x2: pos.x, y2: pos.y,
+            cx: tempShape.cx,
+            cy: tempShape.cy,
+            color: lineColor,
             dashed: lineDashed
           };
           setLines([...lines, newLine]);
@@ -606,9 +721,22 @@ export default function TacticalBoard() {
       }
     }
 
+    // Guardar dibujo libre (lápiz)
+    if (isDrawing && activeTool === 'pencil' && freehandPoints.length > 2) {
+      const newLine = {
+        id: Date.now(),
+        type: 'freehand',
+        points: [...freehandPoints],
+        color: lineColor,
+        dashed: lineDashed
+      };
+      setLines([...lines, newLine]);
+    }
+
     setIsDrawing(false);
     setDrawStart(null);
     setTempShape(null);
+    setFreehandPoints([]);
     setIsDragging(false);
     setIsResizing(false);
     setResizeHandle(null);
@@ -1184,7 +1312,9 @@ export default function TacticalBoard() {
                 {/* Herramientas de dibujo */}
                 <div className="space-y-1.5">
                   {[
+                    { type: 'pencil', label: 'Lápiz libre', icon: <Pencil size={16} /> },
                     { type: 'arrow', label: 'Flecha', icon: <ArrowRight size={16} /> },
+                    { type: 'curvedArrow', label: 'Flecha curva', icon: <Spline size={16} /> },
                     { type: 'line', label: 'Línea', icon: <Minus size={16} /> },
                     { type: 'rectangle', label: 'Rectángulo', icon: <RectangleHorizontal size={16} /> },
                     { type: 'ellipse', label: 'Círculo', icon: <CircleDot size={16} /> }
@@ -1347,9 +1477,15 @@ export default function TacticalBoard() {
               )
             ))}
             
-            {/* Líneas */}
+            {/* Líneas, flechas curvas y dibujo libre */}
             {lines.map(line => (
-              <DrawingLine key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
+              line.type === 'freehand' ? (
+                <FreehandLine key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
+              ) : line.type === 'curvedArrow' ? (
+                <CurvedArrow key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
+              ) : (
+                <DrawingLine key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
+              )
             ))}
             
             {/* Forma temporal mientras se dibuja */}
@@ -1358,6 +1494,13 @@ export default function TacticalBoard() {
                 x1={tempShape.x1} y1={tempShape.y1} x2={tempShape.x2} y2={tempShape.y2}
                 stroke={lineColor} strokeWidth={3} strokeDasharray={lineDashed ? '10 5' : 'none'}
                 opacity={0.6}
+              />
+            )}
+            {tempShape && tempShape.type === 'curvedArrow' && (
+              <path
+                d={`M ${tempShape.x1} ${tempShape.y1} Q ${tempShape.cx} ${tempShape.cy} ${tempShape.x2} ${tempShape.y2}`}
+                stroke={lineColor} strokeWidth={3} strokeDasharray={lineDashed ? '10 5' : 'none'}
+                fill="none" opacity={0.6}
               />
             )}
             {tempShape && tempShape.type === 'rect' && (
@@ -1373,6 +1516,16 @@ export default function TacticalBoard() {
                 rx={tempShape.rx} ry={tempShape.ry}
                 stroke={lineColor} strokeWidth={3} strokeDasharray={lineDashed ? '10 5' : 'none'}
                 fill="transparent" opacity={0.6}
+              />
+            )}
+            {/* Dibujo libre temporal */}
+            {freehandPoints.length > 1 && (
+              <path
+                d={freehandPoints.reduce((acc, point, i) => 
+                  acc + (i === 0 ? `M ${point.x} ${point.y}` : ` L ${point.x} ${point.y}`), ''
+                )}
+                stroke={lineColor} strokeWidth={3} strokeDasharray={lineDashed ? '10 5' : 'none'}
+                fill="none" opacity={0.6} strokeLinecap="round" strokeLinejoin="round"
               />
             )}
             
