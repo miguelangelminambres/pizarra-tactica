@@ -3,7 +3,7 @@ import {
   Users, Circle, Triangle, Minus, Square, Type, MousePointer, Trash2, 
   ArrowRight, MoveRight, Download, Maximize,
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
-  Save, FolderOpen, Plus, X, Loader2, RotateCw
+  Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy
 } from 'lucide-react';
 
 // Clave para localStorage
@@ -981,6 +981,14 @@ export default function TacticalBoard() {
             title="Guardar"
           >
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          </button>
+          <button
+            onClick={() => saveBoard(true)}
+            disabled={isSaving}
+            className="flex items-center gap-1 bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            title="Guardar como copia"
+          >
+            <Copy size={16} />
           </button>
           <button
             onClick={() => { loadBoardsList(); setShowLoadModal(true); }}
