@@ -85,8 +85,12 @@ const LINE_COLORS = [
 const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
   const teamColor = TEAM_COLORS[player.color] || TEAM_COLORS.blue;
   const vestColor = TEAM_COLORS[player.vestColor] || TEAM_COLORS.yellow;
-  const sizeConfig = PLAYER_SIZES[player.size] || PLAYER_SIZES.medium;
   const textColor = ['yellow', 'white'].includes(player.color) ? '#1e293b' : '#ffffff';
+  
+  // Usar escala numérica (default 1.0) - valores base: radius 18, fontSize 14
+  const scale = player.scale ?? 1.0;
+  const radius = 18 * scale;
+  const fontSize = 14 * scale;
 
   return (
     <g
@@ -97,7 +101,7 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
     >
       {player.hasVest && (
         <circle 
-          r={sizeConfig.radius + 4} 
+          r={radius + 4} 
           fill="none" 
           stroke={vestColor.fill} 
           strokeWidth="4" 
@@ -105,7 +109,7 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
         />
       )}
       <circle 
-        r={sizeConfig.radius} 
+        r={radius} 
         fill={teamColor.fill} 
         stroke={isSelected ? '#22c55e' : teamColor.stroke} 
         strokeWidth={isSelected ? 3 : 2} 
@@ -115,7 +119,7 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
           textAnchor="middle" 
           dominantBaseline="central" 
           fill={textColor} 
-          fontSize={sizeConfig.fontSize} 
+          fontSize={fontSize} 
           fontWeight="600" 
           fontFamily="system-ui"
         >
@@ -213,9 +217,20 @@ const DrawingLine = ({ line, isSelected, onSelect }) => {
 };
 
 // Componente Rectángulo editable
-const EditableRect = ({ shape, isSelected, onSelect, onResize }) => {
+const EditableRect = ({ shape, isSelected, onSelect, onResize, activeTool }) => {
+  const handleMouseDown = (e) => {
+    // Solo capturar clic si estamos en modo select
+    if (activeTool === 'select') {
+      onSelect(shape.id, e);
+    }
+    // Si no, dejar que el evento pase al canvas
+  };
+  
   return (
-    <g onMouseDown={(e) => onSelect(shape.id, e)} style={{ cursor: 'move' }}>
+    <g 
+      onMouseDown={handleMouseDown} 
+      style={{ cursor: activeTool === 'select' ? 'move' : 'crosshair', pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
+    >
       <rect
         x={shape.x}
         y={shape.y}
@@ -226,6 +241,7 @@ const EditableRect = ({ shape, isSelected, onSelect, onResize }) => {
         strokeWidth={isSelected ? 4 : 3}
         strokeDasharray={shape.dashed ? '10 5' : 'none'}
         rx="2"
+        style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
       />
       {isSelected && (
         <>
@@ -245,12 +261,21 @@ const EditableRect = ({ shape, isSelected, onSelect, onResize }) => {
 };
 
 // Componente Círculo/Elipse editable
-const EditableEllipse = ({ shape, isSelected, onSelect, onResize }) => {
+const EditableEllipse = ({ shape, isSelected, onSelect, onResize, activeTool }) => {
   const cx = shape.x + shape.rx;
   const cy = shape.y + shape.ry;
   
+  const handleMouseDown = (e) => {
+    if (activeTool === 'select') {
+      onSelect(shape.id, e);
+    }
+  };
+  
   return (
-    <g onMouseDown={(e) => onSelect(shape.id, e)} style={{ cursor: 'move' }}>
+    <g 
+      onMouseDown={handleMouseDown} 
+      style={{ cursor: activeTool === 'select' ? 'move' : 'crosshair', pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
+    >
       <ellipse
         cx={cx}
         cy={cy}
@@ -260,6 +285,7 @@ const EditableEllipse = ({ shape, isSelected, onSelect, onResize }) => {
         stroke={shape.color}
         strokeWidth={isSelected ? 4 : 3}
         strokeDasharray={shape.dashed ? '10 5' : 'none'}
+        style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
       />
       {isSelected && (
         <>
@@ -373,12 +399,14 @@ export default function TacticalBoard() {
     if (activeTool === 'player') {
       const counts = { ...playerCounts };
       counts[selectedColor] = (counts[selectedColor] || 0) + 1;
+      // Calcular escala inicial basada en selectedSize
+      const initialScale = selectedSize === 'small' ? 0.7 : selectedSize === 'large' ? 1.3 : 1.0;
       const newPlayer = {
         id: Date.now(),
         x: pos.x,
         y: pos.y,
         color: selectedColor,
-        size: selectedSize,
+        scale: initialScale,
         number: showNumbers ? counts[selectedColor] : '',
         showNumber: showNumbers,
         hasVest,
@@ -672,6 +700,32 @@ export default function TacticalBoard() {
     
     setEquipment(equipment.map(eq => 
       eq.id === selectedId ? { ...eq, rotation: newRotation } : eq
+    ));
+  };
+
+  // Cambiar tamaño del jugador seleccionado (escala numérica)
+  const handleChangePlayerSize = (direction) => {
+    if (!selectedId) return;
+    const player = players.find(p => p.id === selectedId);
+    if (!player) return;
+    
+    const currentScale = player.scale ?? 1.0;
+    const step = 0.1; // Incremento de 10%
+    const minScale = 0.3; // Mínimo 30% del tamaño original
+    const maxScale = 2.5; // Máximo 250% del tamaño original
+    
+    let newScale;
+    if (direction === 'increase') {
+      newScale = Math.min(currentScale + step, maxScale);
+    } else {
+      newScale = Math.max(currentScale - step, minScale);
+    }
+    
+    // Redondear a 2 decimales
+    newScale = Math.round(newScale * 100) / 100;
+    
+    setPlayers(players.map(p => 
+      p.id === selectedId ? { ...p, scale: newScale } : p
     ));
   };
 
@@ -1170,15 +1224,35 @@ export default function TacticalBoard() {
 
           {/* Acciones */}
           <div className="mt-auto border-t border-gray-700 p-3 space-y-2">
-            {/* Botón editar número - solo si hay jugador seleccionado */}
+            {/* Controles de jugador - solo si hay jugador seleccionado */}
             {selectedId && players.find(p => p.id === selectedId) && (
-              <button
-                onClick={() => handleEditPlayerNumber(selectedId)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
-              >
-                <Type size={16} />
-                Editar número
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleEditPlayerNumber(selectedId)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+                >
+                  <Type size={16} />
+                  Editar número
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleChangePlayerSize('decrease')}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                    title="Reducir tamaño"
+                  >
+                    <Minus size={16} />
+                    Menor
+                  </button>
+                  <button
+                    onClick={() => handleChangePlayerSize('increase')}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                    title="Aumentar tamaño"
+                  >
+                    <Plus size={16} />
+                    Mayor
+                  </button>
+                </div>
+              </div>
             )}
             {/* Botones tamaño - solo si hay equipamiento seleccionado */}
             {selectedId && equipment.find(eq => eq.id === selectedId) && (
@@ -1248,9 +1322,9 @@ export default function TacticalBoard() {
             {/* Shapes (rectángulos y elipses) */}
             {shapes.map(shape => (
               shape.type === 'rect' ? (
-                <EditableRect key={shape.id} shape={shape} isSelected={selectedId === shape.id} onSelect={handleSelect} onResize={handleResize} />
+                <EditableRect key={shape.id} shape={shape} isSelected={selectedId === shape.id} onSelect={handleSelect} onResize={handleResize} activeTool={activeTool} />
               ) : (
-                <EditableEllipse key={shape.id} shape={shape} isSelected={selectedId === shape.id} onSelect={handleSelect} onResize={handleResize} />
+                <EditableEllipse key={shape.id} shape={shape} isSelected={selectedId === shape.id} onSelect={handleSelect} onResize={handleResize} activeTool={activeTool} />
               )
             ))}
             
