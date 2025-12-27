@@ -218,7 +218,7 @@ const DrawingLine = ({ line, isSelected, onSelect }) => {
   );
 };
 
-// Componente Lápiz libre (Freehand)
+// Componente Lápiz libre (Freehand) - siempre con punta de flecha
 const FreehandLine = ({ line, isSelected, onSelect }) => {
   if (!line.points || line.points.length < 2) return null;
   
@@ -226,6 +226,14 @@ const FreehandLine = ({ line, isSelected, onSelect }) => {
   const pathData = line.points.reduce((acc, point, i) => {
     return acc + (i === 0 ? `M ${point.x} ${point.y}` : ` L ${point.x} ${point.y}`);
   }, '');
+
+  // Calcular ángulo para la punta de flecha (últimos 2 puntos)
+  const lastPoint = line.points[line.points.length - 1];
+  const prevPoint = line.points[line.points.length - 2];
+  const dx = lastPoint.x - prevPoint.x;
+  const dy = lastPoint.y - prevPoint.y;
+  const angle = Math.atan2(dy, dx);
+  const headLen = 12;
 
   return (
     <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
@@ -238,22 +246,33 @@ const FreehandLine = ({ line, isSelected, onSelect }) => {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {/* Punta de flecha */}
+      <polygon
+        points={`${lastPoint.x},${lastPoint.y} ${lastPoint.x - headLen * Math.cos(angle - 0.4)},${lastPoint.y - headLen * Math.sin(angle - 0.4)} ${lastPoint.x - headLen * Math.cos(angle + 0.4)},${lastPoint.y - headLen * Math.sin(angle + 0.4)}`}
+        fill={line.color}
+      />
     </g>
   );
 };
 
-// Componente Flecha curva
-const CurvedArrow = ({ line, isSelected, onSelect }) => {
+// Componente Flecha curva con punto de control arrastrable
+const CurvedArrow = ({ line, isSelected, onSelect, onControlDrag }) => {
   const { x1, y1, x2, y2, cx, cy } = line;
   const controlX = cx ?? (x1 + x2) / 2;
   const controlY = cy ?? (y1 + y2) / 2 - 50;
   
   // Calcular ángulo para la punta de flecha (tangente al final de la curva)
-  // Para curva cuadrática, la tangente al final es desde el punto de control hasta el final
   const dx = x2 - controlX;
   const dy = y2 - controlY;
   const angle = Math.atan2(dy, dx);
   const headLen = 12;
+
+  const handleControlMouseDown = (e) => {
+    e.stopPropagation();
+    if (onControlDrag) {
+      onControlDrag(line.id, e);
+    }
+  };
 
   return (
     <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
@@ -269,16 +288,17 @@ const CurvedArrow = ({ line, isSelected, onSelect }) => {
         points={`${x2},${y2} ${x2 - headLen * Math.cos(angle - 0.4)},${y2 - headLen * Math.sin(angle - 0.4)} ${x2 - headLen * Math.cos(angle + 0.4)},${y2 - headLen * Math.sin(angle + 0.4)}`}
         fill={line.color}
       />
-      {/* Punto de control visible cuando está seleccionado */}
+      {/* Punto de control arrastrable cuando está seleccionado */}
       {isSelected && (
         <circle
           cx={controlX}
           cy={controlY}
-          r="6"
+          r="8"
           fill="#22c55e"
           stroke="white"
           strokeWidth="2"
-          style={{ cursor: 'move' }}
+          style={{ cursor: 'grab' }}
+          onMouseDown={handleControlMouseDown}
         />
       )}
     </g>
@@ -428,6 +448,8 @@ export default function TacticalBoard() {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState(null);
   const [resizeStart, setResizeStart] = useState(null);
+  const [isDraggingControl, setIsDraggingControl] = useState(false);
+  const [draggingControlId, setDraggingControlId] = useState(null);
 
   const [expandedSection, setExpandedSection] = useState('players');
   
@@ -624,6 +646,13 @@ export default function TacticalBoard() {
       setFreehandPoints(prev => [...prev, pos]);
     }
 
+    // Arrastrar punto de control de flecha curva
+    if (isDraggingControl && draggingControlId) {
+      setLines(lines.map(l => 
+        l.id === draggingControlId ? { ...l, cx: pos.x, cy: pos.y } : l
+      ));
+    }
+
     // Arrastrar elementos
     if (isDragging && selectedId) {
       const newX = pos.x - dragOffset.x;
@@ -740,6 +769,8 @@ export default function TacticalBoard() {
     setIsDragging(false);
     setIsResizing(false);
     setResizeHandle(null);
+    setIsDraggingControl(false);
+    setDraggingControlId(null);
   };
 
   const handleSelect = (id, e) => {
@@ -781,6 +812,13 @@ export default function TacticalBoard() {
     setIsResizing(true);
     setResizeHandle(handle);
     setResizeStart(getMousePos(e));
+  };
+
+  // Iniciar arrastre del punto de control de flecha curva
+  const handleControlDrag = (id, e) => {
+    e.stopPropagation();
+    setIsDraggingControl(true);
+    setDraggingControlId(id);
   };
 
   const handleDelete = () => {
@@ -1482,7 +1520,7 @@ export default function TacticalBoard() {
               line.type === 'freehand' ? (
                 <FreehandLine key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
               ) : line.type === 'curvedArrow' ? (
-                <CurvedArrow key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
+                <CurvedArrow key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} onControlDrag={handleControlDrag} />
               ) : (
                 <DrawingLine key={line.id} line={line} isSelected={selectedId === line.id} onSelect={handleSelect} />
               )
