@@ -1779,15 +1779,25 @@ export default function TacticalBoard() {
         </aside>
 
         {/* Canvas */}
-        <main className="flex-1 bg-gray-900 flex items-center justify-center p-4 overflow-auto">
-          {/* Logo izquierdo */}
-          <div className="hidden lg:flex flex-col items-center justify-center px-4">
+        <main className="flex-1 bg-gray-900 flex items-center justify-center p-4 overflow-auto relative">
+          {/* Logo superior izquierdo */}
+          <div className="hidden lg:flex absolute top-4 left-4 flex-col items-center">
             <img 
               src="https://toplidercoach.com/wp-content/uploads/2024/02/cropped-Black-White-Minimalist-Letter-MG-Logo.png" 
               alt="TopLiderCoach" 
-              className="w-16 h-16 opacity-60"
+              className="w-12 h-12 opacity-50"
             />
-            <span className="text-gray-500 text-xs mt-2 font-medium">TopLiderCoach</span>
+            <span className="text-gray-500 text-xs mt-1 font-medium">TopLiderCoach</span>
+          </div>
+          
+          {/* Logo superior derecho */}
+          <div className="hidden lg:flex absolute top-4 right-4 flex-col items-center">
+            <img 
+              src="https://toplidercoach.com/wp-content/uploads/2024/02/cropped-Black-White-Minimalist-Letter-MG-Logo.png" 
+              alt="TopLiderCoach" 
+              className="w-12 h-12 opacity-50"
+            />
+            <span className="text-gray-500 text-xs mt-1 font-medium">TopLiderCoach</span>
           </div>
           
           <svg
@@ -1880,16 +1890,6 @@ export default function TacticalBoard() {
               <TextLabel key={item.id} item={item} isSelected={selectedId === item.id} onSelect={handleSelect} onEdit={handleEditText} />
             ))}
           </svg>
-          
-          {/* Logo derecho */}
-          <div className="hidden lg:flex flex-col items-center justify-center px-4">
-            <img 
-              src="https://toplidercoach.com/wp-content/uploads/2024/02/cropped-Black-White-Minimalist-Letter-MG-Logo.png" 
-              alt="TopLiderCoach" 
-              className="w-16 h-16 opacity-60"
-            />
-            <span className="text-gray-500 text-xs mt-2 font-medium">TopLiderCoach</span>
-          </div>
         </main>
       </div>
 
