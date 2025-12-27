@@ -3,7 +3,8 @@ import {
   Users, Circle, Triangle, Minus, Square, Type, MousePointer, Trash2, 
   ArrowRight, MoveRight, Download, Maximize,
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
-  Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy, Pencil, Spline
+  Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy, Pencil, Spline,
+  Undo2, Redo2
 } from 'lucide-react';
 
 // Clave para localStorage
@@ -553,6 +554,11 @@ export default function TacticalBoard() {
 
   const [expandedSection, setExpandedSection] = useState('players');
   
+  // Historial para deshacer/rehacer
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isUndoRedo, setIsUndoRedo] = useState(false);
+  
   // Modal de edición
   const [editModal, setEditModal] = useState({ open: false, type: null, id: null, value: '' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -567,6 +573,112 @@ export default function TacticalBoard() {
 
   const canvasWidth = 850;
   const canvasHeight = 550;
+
+  // Guardar estado en historial cuando cambian los elementos
+  useEffect(() => {
+    // No guardar si estamos haciendo undo/redo o si está vacío al inicio
+    if (isUndoRedo) {
+      setIsUndoRedo(false);
+      return;
+    }
+    
+    // No guardar durante el arrastre o dibujo
+    if (isDragging || isDrawing || isResizing || isDraggingControl) return;
+
+    const currentState = {
+      players: JSON.stringify(players),
+      equipment: JSON.stringify(equipment),
+      lines: JSON.stringify(lines),
+      shapes: JSON.stringify(shapes),
+      texts: JSON.stringify(texts)
+    };
+
+    // Verificar si el estado realmente cambió
+    const lastState = history[historyIndex];
+    if (lastState && 
+        lastState.players === currentState.players &&
+        lastState.equipment === currentState.equipment &&
+        lastState.lines === currentState.lines &&
+        lastState.shapes === currentState.shapes &&
+        lastState.texts === currentState.texts) {
+      return;
+    }
+
+    // Eliminar estados futuros si estamos en medio del historial
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(currentState);
+    
+    // Limitar historial a 50 estados
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    }
+    
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [players, equipment, lines, shapes, texts, isDragging, isDrawing, isResizing, isDraggingControl]);
+
+  // Función deshacer
+  const undo = () => {
+    if (historyIndex <= 0) return;
+    
+    const newIndex = historyIndex - 1;
+    const state = history[newIndex];
+    
+    setIsUndoRedo(true);
+    setPlayers(JSON.parse(state.players));
+    setEquipment(JSON.parse(state.equipment));
+    setLines(JSON.parse(state.lines));
+    setShapes(JSON.parse(state.shapes));
+    setTexts(JSON.parse(state.texts));
+    setHistoryIndex(newIndex);
+    setSelectedId(null);
+  };
+
+  // Función rehacer
+  const redo = () => {
+    if (historyIndex >= history.length - 1) return;
+    
+    const newIndex = historyIndex + 1;
+    const state = history[newIndex];
+    
+    setIsUndoRedo(true);
+    setPlayers(JSON.parse(state.players));
+    setEquipment(JSON.parse(state.equipment));
+    setLines(JSON.parse(state.lines));
+    setShapes(JSON.parse(state.shapes));
+    setTexts(JSON.parse(state.texts));
+    setHistoryIndex(newIndex);
+    setSelectedId(null);
+  };
+
+  // Atajos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Z = Deshacer
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl+Y o Ctrl+Shift+Z = Rehacer
+      if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+        e.preventDefault();
+        redo();
+      }
+      // Supr o Delete = Eliminar seleccionado
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !editModal.open) {
+        e.preventDefault();
+        handleDelete();
+      }
+      // Escape = Deseleccionar
+      if (e.key === 'Escape') {
+        setSelectedId(null);
+        setActiveTool('select');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyIndex, history, selectedId, editModal.open]);
 
   const getMousePos = (e) => {
     const svg = svgRef.current;
@@ -1256,6 +1368,24 @@ export default function TacticalBoard() {
           placeholder="Nombre..."
         />
         <div className="flex gap-2">
+          {/* Deshacer / Rehacer */}
+          <button
+            onClick={undo}
+            disabled={historyIndex <= 0}
+            className="flex items-center gap-1 bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Deshacer (Ctrl+Z)"
+          >
+            <Undo2 size={16} />
+          </button>
+          <button
+            onClick={redo}
+            disabled={historyIndex >= history.length - 1}
+            className="flex items-center gap-1 bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Rehacer (Ctrl+Y)"
+          >
+            <Redo2 size={16} />
+          </button>
+          <div className="w-px bg-gray-600 mx-1"></div>
           <button
             onClick={newBoard}
             className="flex items-center gap-1 bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded-lg text-sm transition-colors"
