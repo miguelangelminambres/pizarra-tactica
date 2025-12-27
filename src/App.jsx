@@ -4,7 +4,7 @@ import {
   ArrowRight, MoveRight, Download, Maximize,
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
   Save, FolderOpen, Plus, X, Loader2, RotateCw, Copy, Pencil, Spline,
-  Undo2, Redo2
+  Undo2, Redo2, Presentation
 } from 'lucide-react';
 
 // Clave para localStorage
@@ -562,6 +562,7 @@ export default function TacticalBoard() {
   // Modal de edición
   const [editModal, setEditModal] = useState({ open: false, type: null, id: null, value: '' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
   
   // Supabase - Gestión de pizarras
   const [savedBoards, setSavedBoards] = useState([]);
@@ -669,16 +670,24 @@ export default function TacticalBoard() {
         e.preventDefault();
         handleDelete();
       }
-      // Escape = Deseleccionar
+      // Escape = Salir de presentación o Deseleccionar
       if (e.key === 'Escape') {
-        setSelectedId(null);
-        setActiveTool('select');
+        if (presentationMode) {
+          setPresentationMode(false);
+        } else {
+          setSelectedId(null);
+          setActiveTool('select');
+        }
+      }
+      // F = Modo presentación (fullscreen)
+      if (e.key === 'f' && !editModal.open) {
+        setPresentationMode(!presentationMode);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyIndex, history, selectedId, editModal.open]);
+  }, [historyIndex, history, selectedId, editModal.open, presentationMode]);
 
   const getMousePos = (e) => {
     const svg = svgRef.current;
@@ -1425,6 +1434,13 @@ export default function TacticalBoard() {
             <Download size={16} />
             <span className="hidden sm:inline">PNG</span>
           </button>
+          <button
+            onClick={() => setPresentationMode(true)}
+            className="flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            title="Modo presentación (F)"
+          >
+            <Presentation size={16} />
+          </button>
         </div>
       </header>
 
@@ -1969,6 +1985,80 @@ export default function TacticalBoard() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modo Presentación */}
+      {presentationMode && (
+        <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center">
+          {/* Título */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-2xl font-bold">
+            {projectName}
+          </div>
+          
+          {/* Campo SVG escalado */}
+          <svg
+            viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+            className="max-w-full max-h-[85vh] border border-gray-700 rounded-lg shadow-2xl"
+            style={{ aspectRatio: `${canvasWidth}/${canvasHeight}` }}
+          >
+            <SoccerField type={fieldType} width={canvasWidth} height={canvasHeight} />
+            
+            {/* Shapes */}
+            {shapes.map(shape => (
+              shape.type === 'rect' ? (
+                <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height}
+                  fill={shape.fill || 'transparent'} stroke={shape.color} strokeWidth={3}
+                  strokeDasharray={shape.dashed ? '10 5' : 'none'} rx="2"
+                />
+              ) : (
+                <ellipse key={shape.id} cx={shape.x + shape.rx} cy={shape.y + shape.ry}
+                  rx={shape.rx} ry={shape.ry} fill={shape.fill || 'transparent'}
+                  stroke={shape.color} strokeWidth={3} strokeDasharray={shape.dashed ? '10 5' : 'none'}
+                />
+              )
+            ))}
+            
+            {/* Lines */}
+            {lines.map(line => (
+              line.type === 'freehand' ? (
+                <FreehandLine key={line.id} line={line} isSelected={false} onSelect={() => {}} />
+              ) : line.type === 'curvedArrow' ? (
+                <CurvedArrow key={line.id} line={line} isSelected={false} onSelect={() => {}} onControlDrag={() => {}} />
+              ) : (
+                <DrawingLine key={line.id} line={line} isSelected={false} onSelect={() => {}} />
+              )
+            ))}
+            
+            {/* Equipment */}
+            {equipment.map(item => (
+              <Equipment key={item.id} item={item} isSelected={false} onSelect={() => {}} />
+            ))}
+            
+            {/* Players */}
+            {players.map(player => (
+              <Player key={player.id} player={player} isSelected={false} onSelect={() => {}} onEditNumber={() => {}} />
+            ))}
+            
+            {/* Texts */}
+            {texts.map(item => (
+              <TextElement key={item.id} item={item} isSelected={false} onSelect={() => {}} />
+            ))}
+          </svg>
+          
+          {/* Botón salir */}
+          <button
+            onClick={() => setPresentationMode(false)}
+            className="absolute top-4 right-4 flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <X size={16} />
+            Salir (ESC)
+          </button>
+          
+          {/* Instrucciones */}
+          <div className="absolute bottom-4 text-gray-500 text-sm">
+            Pulsa ESC o F para salir
           </div>
         </div>
       )}
