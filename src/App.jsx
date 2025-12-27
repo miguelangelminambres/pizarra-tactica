@@ -704,7 +704,7 @@ export default function TacticalBoard() {
       const counts = { ...playerCounts };
       counts[selectedColor] = (counts[selectedColor] || 0) + 1;
       // Calcular escala inicial basada en selectedSize
-      const initialScale = selectedSize === 'small' ? 0.75 : selectedSize === 'large' ? 1.4 : 1.0;
+      const initialScale = selectedSize === 'small' ? 0.55 : selectedSize === 'large' ? 1.4 : 1.0;
       const newPlayer = {
         id: Date.now(),
         x: pos.x,
