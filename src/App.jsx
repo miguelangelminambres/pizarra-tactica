@@ -1250,16 +1250,18 @@ export default function TacticalBoard() {
     const formation = FORMATIONS[formationKey];
     if (!formation) return;
 
+    const initialScale = selectedSize === 'small' ? 0.55 : selectedSize === 'large' ? 1.4 : 1.0;
+
     const newPlayers = formation.positions.map((pos, index) => ({
       id: Date.now() + index,
       x: pos.x * canvasWidth,
       y: pos.y * canvasHeight,
       color: selectedColor,
-      scale: 1.0,
+      scale: initialScale,
       number: index + 1,
-      showNumber: true,
-      hasVest: false,
-      vestColor: 'yellow'
+      showNumber: showNumbers,
+      hasVest: hasVest,
+      vestColor: vestColor
     }));
 
     setPlayers(newPlayers);
