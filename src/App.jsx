@@ -3,7 +3,7 @@ import {
   Users, Circle, Triangle, Minus, Square, Type, MousePointer, Trash2, 
   ArrowRight, MoveRight, Download, Maximize,
   Ruler, Goal, Disc, RectangleHorizontal, CircleDot,
-  Save, FolderOpen, Plus, X, Loader2
+  Save, FolderOpen, Plus, X, Loader2, RotateCw
 } from 'lucide-react';
 import { supabase } from './supabase';
 
@@ -128,15 +128,17 @@ const Player = ({ player, isSelected, onSelect, onDrag, onEditNumber }) => {
 
 // Componente Equipment con imágenes
 const Equipment = ({ item, isSelected, onSelect }) => {
-  const sizeConfig = EQUIPMENT_SIZES[item.size] || EQUIPMENT_SIZES.medium;
+  // Usar escala numérica (default 1.0) en lugar de categorías
+  const scale = item.scale ?? 1.0;
+  const rotation = item.rotation ?? 0;
   const typeConfig = EQUIPMENT_TYPES[item.type] || { baseWidth: 50, baseHeight: 50 };
-  const width = typeConfig.baseWidth * sizeConfig.scale;
-  const height = typeConfig.baseHeight * sizeConfig.scale;
+  const width = typeConfig.baseWidth * scale;
+  const height = typeConfig.baseHeight * scale;
   const image = EQUIPMENT_IMAGES[item.type];
   
   return (
     <g
-      transform={`translate(${item.x}, ${item.y})`}
+      transform={`translate(${item.x}, ${item.y}) rotate(${rotation})`}
       style={{ cursor: 'move' }}
       onMouseDown={(e) => onSelect(item.id, e)}
     >
@@ -163,7 +165,7 @@ const Equipment = ({ item, isSelected, onSelect }) => {
           preserveAspectRatio="xMidYMid meet"
         />
       ) : (
-        <circle r={20 * sizeConfig.scale} fill={item.color || '#f97316'} />
+        <circle r={20 * scale} fill={item.color || '#f97316'} />
       )}
     </g>
   );
@@ -387,7 +389,8 @@ export default function TacticalBoard() {
         setSelectedId(newText.id);
       }
     } else if (['ball', 'cone', 'marker', 'stickRed', 'stickYellow', 'wall', 'smallGoal', 'goalSmall', 'goalMedium', 'goalLarge', 'manikin'].includes(activeTool)) {
-      const newEquip = { id: Date.now(), x: pos.x, y: pos.y, type: activeTool, color: equipmentColor, size: equipmentSize };
+      const initialScale = EQUIPMENT_SIZES[equipmentSize]?.scale || 1.0;
+      const newEquip = { id: Date.now(), x: pos.x, y: pos.y, type: activeTool, color: equipmentColor, scale: initialScale, rotation: 0 };
       setEquipment([...equipment, newEquip]);
       setSelectedId(newEquip.id);
     } else if (activeTool === 'select') {
@@ -626,24 +629,43 @@ export default function TacticalBoard() {
     setSelectedId(null);
   };
 
-  // Cambiar tamaño del equipamiento seleccionado
+  // Cambiar tamaño del equipamiento seleccionado (escala numérica)
   const handleChangeEquipmentSize = (direction) => {
     if (!selectedId) return;
     const equip = equipment.find(eq => eq.id === selectedId);
     if (!equip) return;
     
-    const sizes = ['small', 'medium', 'large'];
-    const currentIndex = sizes.indexOf(equip.size || 'medium');
-    let newIndex;
+    const currentScale = equip.scale ?? 1.0;
+    const step = 0.15; // Incremento de 15%
+    const minScale = 0.15; // Mínimo 15% del tamaño original
+    const maxScale = 3.0;  // Máximo 300% del tamaño original
     
+    let newScale;
     if (direction === 'increase') {
-      newIndex = Math.min(currentIndex + 1, sizes.length - 1);
+      newScale = Math.min(currentScale + step, maxScale);
     } else {
-      newIndex = Math.max(currentIndex - 1, 0);
+      newScale = Math.max(currentScale - step, minScale);
     }
     
+    // Redondear a 2 decimales para evitar problemas de precisión
+    newScale = Math.round(newScale * 100) / 100;
+    
     setEquipment(equipment.map(eq => 
-      eq.id === selectedId ? { ...eq, size: sizes[newIndex] } : eq
+      eq.id === selectedId ? { ...eq, scale: newScale } : eq
+    ));
+  };
+
+  // Rotar equipamiento 90 grados
+  const handleRotateEquipment = () => {
+    if (!selectedId) return;
+    const equip = equipment.find(eq => eq.id === selectedId);
+    if (!equip) return;
+    
+    const currentRotation = equip.rotation ?? 0;
+    const newRotation = (currentRotation + 90) % 360;
+    
+    setEquipment(equipment.map(eq => 
+      eq.id === selectedId ? { ...eq, rotation: newRotation } : eq
     ));
   };
 
@@ -1154,22 +1176,32 @@ export default function TacticalBoard() {
             )}
             {/* Botones tamaño - solo si hay equipamiento seleccionado */}
             {selectedId && equipment.find(eq => eq.id === selectedId) && (
-              <div className="flex gap-2">
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleChangeEquipmentSize('decrease')}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                    title="Reducir tamaño"
+                  >
+                    <Minus size={16} />
+                    Menor
+                  </button>
+                  <button
+                    onClick={() => handleChangeEquipmentSize('increase')}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                    title="Aumentar tamaño"
+                  >
+                    <Plus size={16} />
+                    Mayor
+                  </button>
+                </div>
                 <button
-                  onClick={() => handleChangeEquipmentSize('decrease')}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-                  title="Reducir tamaño"
+                  onClick={handleRotateEquipment}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                  title="Rotar 90°"
                 >
-                  <Minus size={16} />
-                  Menor
-                </button>
-                <button
-                  onClick={() => handleChangeEquipmentSize('increase')}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                  title="Aumentar tamaño"
-                >
-                  <Plus size={16} />
-                  Mayor
+                  <RotateCw size={16} />
+                  Rotar 90°
                 </button>
               </div>
             )}
