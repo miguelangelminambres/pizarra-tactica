@@ -319,13 +319,14 @@ const DrawingLine = ({ line, isSelected, onSelect }) => {
   const dx = line.x2 - line.x1;
   const dy = line.y2 - line.y1;
   const angle = Math.atan2(dy, dx);
-  const headLen = 12;
+  const sw = line.strokeWidth || 3;
+  const headLen = 8 + sw;
 
   return (
     <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
       <line
         x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
-        stroke={line.color} strokeWidth={isSelected ? 4 : 3}
+        stroke={line.color} strokeWidth={isSelected ? sw + 1 : sw}
         strokeDasharray={line.dashed ? '10 5' : 'none'}
       />
       {line.hasArrow && (
@@ -353,14 +354,15 @@ const FreehandLine = ({ line, isSelected, onSelect }) => {
   const dx = lastPoint.x - prevPoint.x;
   const dy = lastPoint.y - prevPoint.y;
   const angle = Math.atan2(dy, dx);
-  const headLen = 12;
+  const sw = line.strokeWidth || 3;
+  const headLen = 8 + sw;
 
   return (
     <g onMouseDown={(e) => onSelect(line.id, e)} style={{ cursor: 'pointer' }}>
       <path
         d={pathData}
         stroke={line.color}
-        strokeWidth={isSelected ? 4 : 3}
+        strokeWidth={isSelected ? sw + 1 : sw}
         strokeDasharray={line.dashed ? '10 5' : 'none'}
         fill="none"
         strokeLinecap="round"
@@ -385,7 +387,8 @@ const CurvedArrow = ({ line, isSelected, onSelect, onControlDrag }) => {
   const dx = x2 - controlX;
   const dy = y2 - controlY;
   const angle = Math.atan2(dy, dx);
-  const headLen = 12;
+  const sw = line.strokeWidth || 3;
+  const headLen = 8 + sw;
 
   const handleControlMouseDown = (e) => {
     e.stopPropagation();
@@ -399,7 +402,7 @@ const CurvedArrow = ({ line, isSelected, onSelect, onControlDrag }) => {
       <path
         d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
         stroke={line.color}
-        strokeWidth={isSelected ? 4 : 3}
+        strokeWidth={isSelected ? sw + 1 : sw}
         strokeDasharray={line.dashed ? '10 5' : 'none'}
         fill="none"
         strokeLinecap="round"
@@ -435,6 +438,8 @@ const EditableRect = ({ shape, isSelected, onSelect, onResize, activeTool }) => 
     // Si no, dejar que el evento pase al canvas
   };
   
+  const sw = shape.strokeWidth || 3;
+  
   return (
     <g 
       onMouseDown={handleMouseDown} 
@@ -447,7 +452,7 @@ const EditableRect = ({ shape, isSelected, onSelect, onResize, activeTool }) => 
         height={shape.height}
         fill={shape.fill || 'transparent'}
         stroke={shape.color}
-        strokeWidth={isSelected ? 4 : 3}
+        strokeWidth={isSelected ? sw + 1 : sw}
         strokeDasharray={shape.dashed ? '10 5' : 'none'}
         rx="2"
         style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
@@ -473,6 +478,7 @@ const EditableRect = ({ shape, isSelected, onSelect, onResize, activeTool }) => 
 const EditableEllipse = ({ shape, isSelected, onSelect, onResize, activeTool }) => {
   const cx = shape.x + shape.rx;
   const cy = shape.y + shape.ry;
+  const sw = shape.strokeWidth || 3;
   
   const handleMouseDown = (e) => {
     if (activeTool === 'select') {
@@ -492,7 +498,7 @@ const EditableEllipse = ({ shape, isSelected, onSelect, onResize, activeTool }) 
         ry={shape.ry}
         fill={shape.fill || 'transparent'}
         stroke={shape.color}
-        strokeWidth={isSelected ? 4 : 3}
+        strokeWidth={isSelected ? sw + 1 : sw}
         strokeDasharray={shape.dashed ? '10 5' : 'none'}
         style={{ pointerEvents: activeTool === 'select' ? 'auto' : 'none' }}
       />
@@ -549,6 +555,7 @@ export default function TacticalBoard() {
   const [equipmentSize, setEquipmentSize] = useState('medium');
   const [lineColor, setLineColor] = useState('#ffffff');
   const [lineDashed, setLineDashed] = useState(false);
+  const [lineWidth, setLineWidth] = useState(3);
   const [projectName, setProjectName] = useState('Mi táctica');
   
   const [players, setPlayers] = useState([]);
@@ -934,7 +941,8 @@ export default function TacticalBoard() {
             x2: pos.x, y2: pos.y,
             color: lineColor,
             hasArrow: activeTool === 'arrow',
-            dashed: lineDashed
+            dashed: lineDashed,
+            strokeWidth: lineWidth
           };
           setLines([...lines, newLine]);
         }
@@ -952,7 +960,8 @@ export default function TacticalBoard() {
             cx: tempShape.cx,
             cy: tempShape.cy,
             color: lineColor,
-            dashed: lineDashed
+            dashed: lineDashed,
+            strokeWidth: lineWidth
           };
           setLines([...lines, newLine]);
         }
@@ -967,7 +976,8 @@ export default function TacticalBoard() {
             height: tempShape.height,
             color: lineColor,
             dashed: lineDashed,
-            fill: 'transparent'
+            fill: 'transparent',
+            strokeWidth: lineWidth
           };
           setShapes([...shapes, newShape]);
           setSelectedId(newShape.id);
@@ -983,7 +993,8 @@ export default function TacticalBoard() {
             ry: tempShape.ry,
             color: lineColor,
             dashed: lineDashed,
-            fill: 'transparent'
+            fill: 'transparent',
+            strokeWidth: lineWidth
           };
           setShapes([...shapes, newShape]);
           setSelectedId(newShape.id);
@@ -998,7 +1009,8 @@ export default function TacticalBoard() {
         type: 'freehand',
         points: [...freehandPoints],
         color: lineColor,
-        dashed: lineDashed
+        dashed: lineDashed,
+        strokeWidth: lineWidth
       };
       setLines([...lines, newLine]);
     }
@@ -1731,6 +1743,23 @@ export default function TacticalBoard() {
                     >
                       <MoveRight size={14} /> Discontinua
                     </button>
+                  </div>
+                </div>
+
+                {/* Grosor de trazo */}
+                <div>
+                  <label className="text-xs text-gray-500 uppercase">Grosor: {lineWidth}px</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={lineWidth}
+                    onChange={(e) => setLineWidth(Number(e.target.value))}
+                    className="w-full mt-1 accent-green-500"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Fino</span>
+                    <span>Grueso</span>
                   </div>
                 </div>
                 
