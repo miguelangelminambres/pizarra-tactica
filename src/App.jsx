@@ -716,12 +716,16 @@ export default function TacticalBoard() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [historyIndex, history, selectedId, editModal.open, presentationMode]);
 
+  // Obtener posición del mouse o touch
   const getMousePos = (e) => {
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
+    // Soportar tanto mouse como touch
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: clientX - rect.left,
+      y: clientY - rect.top
     };
   };
 
@@ -1024,6 +1028,35 @@ export default function TacticalBoard() {
     setResizeHandle(null);
     setIsDraggingControl(false);
     setDraggingControlId(null);
+  };
+
+  // Handlers para touch (equivalentes a mouse)
+  const handleTouchStart = (e) => {
+    e.preventDefault(); // Prevenir scroll
+    const touch = e.touches[0];
+    const simulatedEvent = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      target: e.target,
+      touches: e.touches
+    };
+    handleCanvasMouseDown(simulatedEvent);
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const simulatedEvent = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      touches: e.touches
+    };
+    handleCanvasMouseMove(simulatedEvent);
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    handleCanvasMouseUp(e);
   };
 
   const handleSelect = (id, e) => {
@@ -1933,12 +1966,15 @@ export default function TacticalBoard() {
             width={canvasWidth}
             height={canvasHeight}
             className="rounded-lg shadow-2xl flex-shrink-0"
-            style={{ cursor: activeTool === 'select' ? 'default' : 'crosshair' }}
+            style={{ cursor: activeTool === 'select' ? 'default' : 'crosshair', touchAction: 'none' }}
             onClick={handleCanvasClick}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             <SoccerField type={fieldType} width={canvasWidth} height={canvasHeight} />
             
