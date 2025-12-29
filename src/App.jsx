@@ -552,122 +552,6 @@ const SoccerField = ({ type, width, height }) => {
 
 export default function TacticalBoard() {
   const svgRef = useRef(null);
-  
-  // ========================================
-  // VALIDACIÓN DE ACCESO FBT
-  // ========================================
-  // Estados: 'checking' | 'valid' | 'invalid' | 'error'
-  const [fbtAccess, setFbtAccess] = useState('checking');
-  const [isFbtCoach, setIsFbtCoach] = useState(false); // true si viene de FBT con token válido
-  
-  // Validar token de FBT al cargar (SOLO si viene con token)
-  useEffect(() => {
-    const validateFbtToken = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
-      // Si NO hay token → Acceso libre (TopLiderCoach u otros)
-      if (!token) {
-        setFbtAccess('valid');
-        setIsFbtCoach(false);
-        return;
-      }
-      
-      // Si HAY token → Validar (viene de FBT)
-      try {
-        const response = await fetch(
-          `${FBT_CONFIG.supabaseUrl}/rest/v1/rpc/validar_token_pizarra`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': FBT_CONFIG.supabaseAnonKey,
-              'Authorization': `Bearer ${FBT_CONFIG.supabaseAnonKey}`
-            },
-            body: JSON.stringify({ token_input: token })
-          }
-        );
-        
-        const result = await response.json();
-        
-        if (result === true) {
-          setFbtAccess('valid');
-          setIsFbtCoach(true); // ¡Es usuario Coach de FBT!
-          // Limpiar token de la URL (por seguridad)
-          window.history.replaceState({}, '', window.location.pathname);
-        } else {
-          setFbtAccess('invalid');
-        }
-      } catch (error) {
-        console.error('Error validando token FBT:', error);
-        setFbtAccess('error');
-      }
-    };
-    
-    validateFbtToken();
-  }, []);
-  
-  // ========================================
-  // PANTALLA DE CARGA (validando token)
-  // ========================================
-  if (fbtAccess === 'checking') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 size={48} className="animate-spin text-green-500 mx-auto mb-4" />
-          <p className="text-white text-xl">Verificando acceso...</p>
-          <p className="text-gray-400 text-sm mt-2">Conectando con Futbol Base TUBE</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // ========================================
-  // PANTALLA DE BLOQUEO (sin acceso)
-  // ========================================
-  if (fbtAccess === 'invalid' || fbtAccess === 'error') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900/30 to-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-2xl p-8 max-w-md text-center shadow-2xl border border-gray-700">
-          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Shield size={40} className="text-red-400" />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-3">
-            Acceso Restringido
-          </h1>
-          <p className="text-gray-400 mb-6">
-            La Pizarra Táctica es una herramienta exclusiva para usuarios 
-            <span className="text-green-400 font-semibold"> Coach </span> 
-            de Futbol Base TUBE.
-          </p>
-          <div className="space-y-3">
-            <a 
-              href={FBT_CONFIG.redirectUrl}
-              className="block w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-            >
-              🚀 Hazte Coach Ahora
-            </a>
-            <a 
-              href="https://futbolbasetube.com"
-              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors"
-            >
-              Volver a Futbol Base TUBE
-            </a>
-          </div>
-          <p className="text-gray-500 text-xs mt-6">
-            {fbtAccess === 'error' 
-              ? 'Error de conexión. Inténtalo de nuevo más tarde.' 
-              : 'Token de acceso inválido o expirado.'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  // ========================================
-  // PIZARRA TÁCTICA (acceso válido)
-  // ========================================
-  
   const [fieldType, setFieldType] = useState('full');
   const [activeTool, setActiveTool] = useState('select');
   const [selectedColor, setSelectedColor] = useState('blue');
@@ -723,6 +607,58 @@ export default function TacticalBoard() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // ========================================
+  // VALIDACIÓN DE ACCESO FBT
+  // ========================================
+  const [fbtAccess, setFbtAccess] = useState('checking'); // 'checking' | 'valid' | 'invalid' | 'error'
+  const [isFbtCoach, setIsFbtCoach] = useState(false);
+  
+  // Validar token FBT al cargar (SOLO si viene con token)
+  useEffect(() => {
+    const validateFbtToken = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      // Si NO hay token → Acceso libre (TopLiderCoach u otros)
+      if (!token) {
+        setFbtAccess('valid');
+        setIsFbtCoach(false);
+        return;
+      }
+      
+      // Si HAY token → Validar (viene de FBT)
+      try {
+        const response = await fetch(
+          `${FBT_CONFIG.supabaseUrl}/rest/v1/rpc/validar_token_pizarra`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': FBT_CONFIG.supabaseAnonKey,
+              'Authorization': `Bearer ${FBT_CONFIG.supabaseAnonKey}`
+            },
+            body: JSON.stringify({ token_input: token })
+          }
+        );
+        
+        const result = await response.json();
+        
+        if (result === true) {
+          setFbtAccess('valid');
+          setIsFbtCoach(true);
+          window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          setFbtAccess('invalid');
+        }
+      } catch (error) {
+        console.error('Error validando token FBT:', error);
+        setFbtAccess('error');
+      }
+    };
+    
+    validateFbtToken();
+  }, []);
 
   const canvasWidth = 850;
   const canvasHeight = 550;
@@ -1559,6 +1495,65 @@ export default function TacticalBoard() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, players, equipment, texts, lines, shapes]);
+
+  // ========================================
+  // PANTALLAS CONDICIONALES FBT
+  // ========================================
+  
+  // Pantalla de carga (validando token)
+  if (fbtAccess === 'checking') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={48} className="animate-spin text-green-500 mx-auto mb-4" />
+          <p className="text-white text-xl">Verificando acceso...</p>
+          <p className="text-gray-400 text-sm mt-2">Conectando con Futbol Base TUBE</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Pantalla de bloqueo (token inválido - solo aparece si venía con token)
+  if (fbtAccess === 'invalid' || fbtAccess === 'error') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900/30 to-gray-900 flex items-center justify-center p-4">
+        <div className="bg-gray-800 rounded-2xl p-8 max-w-md text-center shadow-2xl border border-gray-700">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield size={40} className="text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-3">Acceso Restringido</h1>
+          <p className="text-gray-400 mb-6">
+            La Pizarra Táctica es una herramienta exclusiva para usuarios 
+            <span className="text-green-400 font-semibold"> Coach </span> 
+            de Futbol Base TUBE.
+          </p>
+          <div className="space-y-3">
+            <a 
+              href={FBT_CONFIG.redirectUrl}
+              className="block w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              🚀 Hazte Coach Ahora
+            </a>
+            <a 
+              href="https://futbolbasetube.com"
+              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              Volver a Futbol Base TUBE
+            </a>
+          </div>
+          <p className="text-gray-500 text-xs mt-6">
+            {fbtAccess === 'error' 
+              ? 'Error de conexión. Inténtalo de nuevo más tarde.' 
+              : 'Token de acceso inválido o expirado.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================
+  // PIZARRA TÁCTICA (acceso válido)
+  // ========================================
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white" style={{ fontFamily: 'system-ui' }}>
