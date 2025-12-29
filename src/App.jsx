@@ -558,21 +558,23 @@ export default function TacticalBoard() {
   // ========================================
   // Estados: 'checking' | 'valid' | 'invalid' | 'error'
   const [fbtAccess, setFbtAccess] = useState('checking');
+  const [isFbtCoach, setIsFbtCoach] = useState(false); // true si viene de FBT con token válido
   
-  // Validar token de FBT al cargar
+  // Validar token de FBT al cargar (SOLO si viene con token)
   useEffect(() => {
     const validateFbtToken = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       
-      // Si no hay token, acceso denegado
+      // Si NO hay token → Acceso libre (TopLiderCoach u otros)
       if (!token) {
-        setFbtAccess('invalid');
+        setFbtAccess('valid');
+        setIsFbtCoach(false);
         return;
       }
       
+      // Si HAY token → Validar (viene de FBT)
       try {
-        // Llamar a la función RPC de Supabase FBT
         const response = await fetch(
           `${FBT_CONFIG.supabaseUrl}/rest/v1/rpc/validar_token_pizarra`,
           {
@@ -590,7 +592,8 @@ export default function TacticalBoard() {
         
         if (result === true) {
           setFbtAccess('valid');
-          // Limpiar token de la URL (opcional, por seguridad)
+          setIsFbtCoach(true); // ¡Es usuario Coach de FBT!
+          // Limpiar token de la URL (por seguridad)
           window.history.replaceState({}, '', window.location.pathname);
         } else {
           setFbtAccess('invalid');
@@ -1565,10 +1568,12 @@ export default function TacticalBoard() {
           <div className="flex items-center gap-2">
             <span className="text-xl">⚽</span>
             <span className="font-semibold hidden sm:inline">Pizarra Táctica</span>
-            <span className="bg-green-500/20 text-green-400 text-xs font-medium px-2 py-0.5 rounded-full border border-green-500/30 hidden sm:inline-flex items-center gap-1">
-              <Shield size={10} />
-              Coach
-            </span>
+            {isFbtCoach && (
+              <span className="bg-green-500/20 text-green-400 text-xs font-medium px-2 py-0.5 rounded-full border border-green-500/30 hidden sm:inline-flex items-center gap-1">
+                <Shield size={10} />
+                Coach
+              </span>
+            )}
           </div>
           <div className="flex bg-gray-700 rounded-lg p-1 gap-1">
             {[
